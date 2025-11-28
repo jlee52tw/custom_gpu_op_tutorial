@@ -59,7 +59,11 @@ in2 = np.random.rand(*shape).astype(np.float32)
 
 # Run inference
 print("Running inference...")
+import time
+start_time = time.time()
 results = compiled_model([in0, in1, in2])
+end_time = time.time()
+print(f"Inference time: {(end_time - start_time) * 1000:.2f} ms")
 
 # Get output
 out = results[compiled_model.output(0)]

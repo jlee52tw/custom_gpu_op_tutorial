@@ -100,7 +100,11 @@ classDiagram
 ## Steps to Run
 
 1.  Ensure you have OpenVINO installed and an Intel GPU available.
-2.  Run the test script:
+2.  Generate the IR model (optional, if you want to change shapes):
+    ```bash
+    python create_model.py
+    ```
+3.  Run the test script:
     ```bash
     python test_custom_op.py
     ```
