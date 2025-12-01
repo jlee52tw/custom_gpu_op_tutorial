@@ -6,6 +6,32 @@
 #include <cmath>
 #include <algorithm>
 
+// Define Custom Op Class to allow read_model to succeed
+class CustomAddMul : public ov::op::Op {
+public:
+    OPENVINO_OP("CustomAddMul", "extension");
+
+    CustomAddMul() = default;
+    CustomAddMul(const ov::OutputVector& args) : Op(args) {
+        validate_and_infer_types();
+    }
+
+    void validate_and_infer_types() override {
+        // Output shape is same as input 0
+        if (get_input_size() > 0) {
+            set_output_type(0, get_input_element_type(0), get_input_partial_shape(0));
+        }
+    }
+
+    std::shared_ptr<ov::Node> clone_with_new_inputs(const ov::OutputVector& new_args) const override {
+        return std::make_shared<CustomAddMul>(new_args);
+    }
+
+    bool visit_attributes(ov::AttributeVisitor& visitor) override {
+        return true;
+    }
+};
+
 // Helper to fill tensor with random data
 void fill_tensor(ov::Tensor& tensor) {
     float* data = tensor.data<float>();
@@ -21,6 +47,10 @@ int main() {
     try {
         // Initialize Core
         ov::Core core;
+        
+        // Register the custom op
+        core.add_extension<CustomAddMul>();
+        std::cout << "Registered CustomAddMul extension." << std::endl;
         
         // Check for GPU
         std::vector<std::string> devices = core.get_available_devices();
