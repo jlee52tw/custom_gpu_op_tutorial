@@ -80,9 +80,12 @@ request = compiled_model.create_infer_request()
 
 # Prepare inputs
 # We need 3 inputs for CustomAddMul
-input0_data = np.random.rand(1, 3, 224, 224).astype(np.float32)
-input1_data = np.random.rand(1, 3, 224, 224).astype(np.float32)
-input2_data = np.random.rand(1, 3, 224, 224).astype(np.float32)
+# Updated shape for stress test
+H, W = 2048, 2048
+print(f"Generating input data ({H}x{W})...")
+input0_data = np.random.rand(1, 3, H, W).astype(np.float32)
+input1_data = np.random.rand(1, 3, H, W).astype(np.float32)
+input2_data = np.random.rand(1, 3, H, W).astype(np.float32)
 
 inputs = [input0_data, input1_data, input2_data]
 
@@ -111,3 +114,17 @@ else:
     print("First few values:")
     print("Result:", result.flatten()[:5])
     print("Expected:", expected.flatten()[:5])
+
+# Stress Test
+import time
+print("\nStarting stress test for 30 seconds...")
+start_time = time.time()
+iterations = 0
+while time.time() - start_time < 30:
+    request.infer(inputs)
+    iterations += 1
+    if iterations % 10 == 0:
+        print(f"Iterations: {iterations}, Time: {time.time() - start_time:.2f}s")
+
+print(f"Stress test complete. Total iterations: {iterations}")
+

@@ -6,7 +6,8 @@ def create_ir_model(model_path, model_name="CustomAddMul_Net"):
     bin_path = model_path + ".bin"
     
     # Define shapes
-    N, C, H, W = 1, 3, 224, 224
+    # Increased size for stress testing: 2048x2048
+    N, C, H, W = 1, 3, 2048, 2048
     precision = "FP32"
     type_str = "f32"
     
