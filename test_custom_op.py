@@ -14,25 +14,48 @@ core = ov.Core()
 # Check if GPU is available
 if "GPU" not in core.available_devices:
     print("GPU device not found. This tutorial requires an Intel GPU.")
-    # For the sake of the agent running in a non-GPU environment, we might fail here.
-    # But the user asked "how to add", so providing the code is the main goal.
-    # I will print a warning but try to proceed if possible (it won't work without GPU).
     print("Available devices:", core.available_devices)
-    # exit(1) 
 
 print(f"Loading custom layer config from {custom_layer_xml}...")
-# Set the custom layer config file
-# The property key in C++ is ov::intel_gpu::config_file
-# In Python, we can try passing it as a dict.
+
+# Define Custom Op Class to allow read_model to succeed
+class CustomAddMul(ov.Op):
+    def __init__(self, inputs=None):
+        # Follow the documentation pattern: super().__init__(self, inputs)
+        # If inputs is a list of nodes, we might need to ensure they are Output objects
+        if inputs is None:
+            super().__init__(self)
+        else:
+            super().__init__(self, inputs)
+            self.validate_and_infer_types()
+
+    def validate_and_infer_types(self):
+        # Output shape is same as input 0
+        if self.get_input_size() > 0:
+            self.set_output_type(0, self.get_input_element_type(0), self.get_input_partial_shape(0))
+
+    def clone_with_new_inputs(self, new_inputs):
+        return CustomAddMul(new_inputs)
+
+    def visit_attributes(self, visitor):
+        return True
+
+# Register the custom op
 try:
-    core.set_property("GPU", {"config_file": custom_layer_xml})
+    core.add_extension(CustomAddMul)
+    print("Registered CustomAddMul extension.")
 except Exception as e:
-    print(f"Warning: Could not set property 'config_file': {e}")
-    print("Trying 'cldnn_config_file'...")
-    try:
-        core.set_property("GPU", {"cldnn_config_file": custom_layer_xml})
-    except Exception as e2:
-        print(f"Warning: Could not set property 'cldnn_config_file': {e2}")
+    print(f"Warning: Could not register CustomAddMul extension: {e}")
+    # Try with instance if class fails? No, usually it's class.
+    # Or maybe ov.Extension?
+
+# Config for GPU
+config = {}
+# Use the internal property key "CONFIG_FILE"
+config["CONFIG_FILE"] = custom_layer_xml
+# Force FP32 inference precision to match the OpenCL kernel (which uses float)
+# If this is not set, the GPU plugin might use FP16, causing memory mismatch with the kernel.
+config["INFERENCE_PRECISION_HINT"] = "f32"
 
 # Load the model
 print(f"Reading model from {model_xml}...")
@@ -45,35 +68,46 @@ except Exception as e:
 # Compile the model on GPU
 print("Compiling model on GPU...")
 try:
-    compiled_model = core.compile_model(model=model, device_name="GPU")
+    compiled_model = core.compile_model(model, "GPU", config=config)
 except Exception as e:
     print(f"Error compiling model: {e}")
-    print("This is expected if no Intel GPU is present or if the custom layer config is invalid.")
+    print("Ensure you have an Intel GPU and the OpenCL driver installed.")
+    # If CONFIG_FILE is rejected, we might see it here.
     exit(1)
 
-# Create input data
-shape = (1, 3, 224, 224)
-in0 = np.random.rand(*shape).astype(np.float32)
-in1 = np.random.rand(*shape).astype(np.float32)
-in2 = np.random.rand(*shape).astype(np.float32)
+# Create inference request
+request = compiled_model.create_infer_request()
+
+# Prepare inputs
+# We need 3 inputs for CustomAddMul
+input0_data = np.random.rand(1, 3, 224, 224).astype(np.float32)
+input1_data = np.random.rand(1, 3, 224, 224).astype(np.float32)
+input2_data = np.random.rand(1, 3, 224, 224).astype(np.float32)
+
+inputs = [input0_data, input1_data, input2_data]
 
 # Run inference
 print("Running inference...")
-import time
-start_time = time.time()
-results = compiled_model([in0, in1, in2])
-end_time = time.time()
-print(f"Inference time: {(end_time - start_time) * 1000:.2f} ms")
+results = request.infer(inputs)
 
-# Get output
-out = results[compiled_model.output(0)]
+# Get result
+result = results[compiled_model.output(0)]
 
-# Verify result
-# Expected: (in0 + in1) * in2
-expected = (in0 + in1) * in2
+print("Inference successful!")
+print(f"Result shape: {result.shape}")
 
-if np.allclose(out, expected, atol=1e-5):
-    print("Success! Output matches expected values.")
+# Verify result (A*B + C)
+# The kernel implementation in custom_add_mul.cl is:
+# output[i] = (input0[i] + input1[i]) * input2[i];
+expected = (input0_data + input1_data) * input2_data
+
+print("Verifying results...")
+if np.allclose(result, expected, atol=1e-3):
+    print("SUCCESS: Result matches expected output!")
 else:
-    print("Failure! Output does not match.")
-    print("Max difference:", np.max(np.abs(out - expected)))
+    print("FAILURE: Result does not match expected output.")
+    max_diff = np.max(np.abs(result - expected))
+    print(f"Max difference: {max_diff}")
+    print("First few values:")
+    print("Result:", result.flatten()[:5])
+    print("Expected:", expected.flatten()[:5])

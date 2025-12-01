@@ -9,5 +9,5 @@
         <Tensor arg-index="3" port-index="0" type="output" format="BFYX"/>
     </Buffers>
     <CompilerOptions options="-cl-mad-enable"/>
-    <WorkSizes global="B*F*Y*X" local="16"/>
+    <WorkSizes global="B*F*Y*X"/>
 </CustomLayer>

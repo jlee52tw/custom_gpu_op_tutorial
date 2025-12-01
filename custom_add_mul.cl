@@ -8,7 +8,6 @@ __kernel void custom_add_mul(
 {
     const uint idx = get_global_id(0);
     
-    // Simple element-wise operation
-    // Ensure that the global work size matches the total number of elements
+    // Full operation
     out[idx] = (in0[idx] + in1[idx]) * in2[idx];
 }

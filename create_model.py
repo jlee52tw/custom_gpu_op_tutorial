@@ -69,7 +69,7 @@ def create_ir_model(model_path, model_name="CustomAddMul_Net"):
 				</port>
 			</input>
 			<output>
-				<port id="3" precision="{precision}" names="out">
+				<port id="0" precision="{precision}" names="out">
 					<dim>{N}</dim>
 					<dim>{C}</dim>
 					<dim>{H}</dim>
@@ -92,7 +92,7 @@ def create_ir_model(model_path, model_name="CustomAddMul_Net"):
 		<edge from-layer="0" from-port="0" to-layer="3" to-port="0"/>
 		<edge from-layer="1" from-port="0" to-layer="3" to-port="1"/>
         <edge from-layer="2" from-port="0" to-layer="3" to-port="2"/>
-		<edge from-layer="3" from-port="3" to-layer="4" to-port="0"/>
+		<edge from-layer="3" from-port="0" to-layer="4" to-port="0"/>
 	</edges>
 </net>
 """
