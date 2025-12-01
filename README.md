@@ -1,6 +1,6 @@
 # OpenVINO Custom GPU Operator Tutorial
 
-This tutorial demonstrates how to add a custom OpenCL operator to the OpenVINO GPU plugin without recompiling OpenVINO.
+This tutorial demonstrates how to add a custom OpenCL operator to the OpenVINO GPU plugin without recompiling OpenVINO. It provides both **Python** and **C++** implementations.
 
 ## Overview
 
@@ -8,14 +8,75 @@ The process involves:
 1.  **Kernel Implementation**: Writing the OpenCL C kernel code (`.cl`).
 2.  **Configuration**: Creating an XML file (`.xml`) that describes the custom layer and maps it to the kernel.
 3.  **Model Creation**: Creating an OpenVINO IR model (`.xml` + `.bin`) that uses the custom layer type.
-4.  **Execution**: Loading the configuration and model in an OpenVINO application.
+4.  **Execution**: Loading the configuration and model in an OpenVINO application (Python or C++).
 
 ## Files
 
 *   `custom_add_mul.cl`: The OpenCL kernel implementation.
 *   `custom_add_mul.xml`: The configuration file for the custom layer.
 *   `model.xml`: A manually created OpenVINO IR model using the `CustomAddMul` layer.
-*   `test_custom_op.py`: A Python script to run the inference.
+*   `create_model.py`: Python script to generate the IR model.
+*   `test_custom_op.py`: Python implementation of the tutorial.
+*   `main.cpp`: C++ implementation of the tutorial.
+*   `CMakeLists.txt`: CMake build file for the C++ version.
+
+## Prerequisites
+
+*   **OpenVINO 2025.3.0** (or compatible version).
+*   **Intel GPU** (Integrated or Discrete) with OpenCL drivers installed.
+*   **Python 3.8+** (for Python version).
+*   **CMake 3.10+** and a C++ Compiler (e.g., MSVC on Windows, GCC on Linux) (for C++ version).
+
+## Environment Setup
+
+Before running either version, you must initialize the OpenVINO environment variables.
+
+**Windows (PowerShell):**
+```powershell
+& "C:\path\to\openvino\setupvars.ps1"
+```
+*(Example: `& "C:\working\gpt-oss-20b-custome-operator\openvino_genai_windows_2025.3.0.0_x86_64\setupvars.ps1"`)*
+
+**Linux:**
+```bash
+source /path/to/openvino/setupvars.sh
+```
+
+## How to Run
+
+### 1. Generate the Model
+First, generate the OpenVINO IR model (`model.xml` and `model.bin`) with the correct topology and shapes (2048x2048).
+
+```bash
+python create_model.py
+```
+
+### 2. Run Python Version
+The Python script loads the custom layer config, compiles the model, and runs a 30-second stress test.
+
+```bash
+python test_custom_op.py
+```
+
+### 3. Run C++ Version
+The C++ version performs the same logic as the Python script.
+
+**Build:**
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+```
+
+**Run:**
+```bash
+# Windows
+.\Release\test_custom_op_cpp.exe
+
+# Linux
+./test_custom_op_cpp
+```
 
 ## Interaction Flow
 
@@ -99,16 +160,7 @@ classDiagram
 
 ## Steps to Run
 
-1.  Ensure you have OpenVINO installed (tested with 2025.3.0) and an Intel GPU available with OpenCL drivers.
-2.  Generate the IR model:
-    ```bash
-    python create_model.py
-    ```
-    *This generates `model.xml` and `model.bin` with the correct topology (CustomAddMul node).*
-3.  Run the test script:
-    ```bash
-    python test_custom_op.py
-    ```
+*(See "How to Run" section above for detailed instructions)*
 
 ## Implementation Details
 
