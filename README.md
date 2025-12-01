@@ -99,11 +99,12 @@ classDiagram
 
 ## Steps to Run
 
-1.  Ensure you have OpenVINO installed and an Intel GPU available.
-2.  Generate the IR model (optional, if you want to change shapes):
+1.  Ensure you have OpenVINO installed (tested with 2025.3.0) and an Intel GPU available with OpenCL drivers.
+2.  Generate the IR model:
     ```bash
     python create_model.py
     ```
+    *This generates `model.xml` and `model.bin` with the correct topology (CustomAddMul node).*
 3.  Run the test script:
     ```bash
     python test_custom_op.py
@@ -112,6 +113,8 @@ classDiagram
 ## Implementation Details
 
 ### 1. OpenCL Kernel (`custom_add_mul.cl`)
+
+The kernel performs `(A + B) * C` on float32 data.
 
 ```c
 __kernel void custom_add_mul(
@@ -127,7 +130,7 @@ __kernel void custom_add_mul(
 
 ### 2. Configuration (`custom_add_mul.xml`)
 
-Defines the mapping between the IR layer and the kernel.
+Defines the mapping between the IR layer and the kernel. Note that `WorkSizes` calculates the global work size dynamically based on input dimensions.
 
 ```xml
 <CustomLayer name="CustomAddMul" type="SimpleGPU" version="1">
@@ -140,7 +143,8 @@ Defines the mapping between the IR layer and the kernel.
         <Tensor arg-index="2" port-index="2" type="input" format="BFYX"/>
         <Tensor arg-index="3" port-index="0" type="output" format="BFYX"/>
     </Buffers>
-    <WorkSizes global="B*F*Y*X" local="16"/>
+    <CompilerOptions options="-cl-mad-enable"/>
+    <WorkSizes global="B*F*Y*X"/>
 </CustomLayer>
 ```
 
@@ -152,4 +156,21 @@ A standard OpenVINO XML where a layer has `type="CustomAddMul"`.
 <layer id="3" name="custom_op" type="CustomAddMul" version="extension">
     ...
 </layer>
+```
+
+## Important Notes
+
+### Precision Mismatch
+The OpenVINO GPU plugin defaults to **FP16** (half-precision) for performance. However, the custom OpenCL kernel is written for **FP32** (`float`).
+If run without configuration, the GPU plugin allocates FP16 buffers while the kernel writes FP32 data, causing memory corruption (garbage output).
+
+To fix this, we force the inference precision to FP32 in `test_custom_op.py`:
+```python
+config["INFERENCE_PRECISION_HINT"] = "f32"
+```
+
+### Configuration Property
+The custom layer configuration file is loaded using the internal property key `CONFIG_FILE` (or `cldnn_config_file` in some contexts).
+```python
+config["CONFIG_FILE"] = "custom_add_mul.xml"
 ```
