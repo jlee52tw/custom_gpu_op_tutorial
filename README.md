@@ -76,7 +76,9 @@ cmake --build . --config Release
 
 # Linux
 ./test_custom_op_cpp
+
 ```
+<img width="1411" height="1204" alt="image" src="https://github.com/user-attachments/assets/876733c2-7d05-494b-837a-62979c3a5e59" />
 
 ## Interaction Flow
 
